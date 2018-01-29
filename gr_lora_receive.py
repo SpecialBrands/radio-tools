@@ -3,7 +3,7 @@
 ##################################################
 # GNU Radio Python Flow Graph
 # Title: Gr Lora Receive
-# Generated: Tue Jan 16 16:30:12 2018
+# Generated: Mon Jan 22 16:43:37 2018
 ##################################################
 
 if __name__ == '__main__':
@@ -23,9 +23,9 @@ from gnuradio.eng_option import eng_option
 from gnuradio.fft import window
 from gnuradio.filter import firdes
 from gnuradio.wxgui import fftsink2
+from gnuradio.wxgui import waterfallsink2
 from grc_gnuradio import wxgui as grc_wxgui
 from optparse import OptionParser
-import lora
 import osmosdr
 import time
 import wx
@@ -41,14 +41,33 @@ class gr_lora_receive(grc_wxgui.top_block_gui):
         ##################################################
         # Variables
         ##################################################
-        self.samp_rate = samp_rate = 3e6
+        self.samp_rate = samp_rate = 1e6
         self.offset = offset = -26e3
+        self.lora_sf = lora_sf = 7
         self.freq = freq = 868.1e6
         self.ch_freq = ch_freq = 868e6
 
         ##################################################
         # Blocks
         ##################################################
+        self.wxgui_waterfallsink2_0 = waterfallsink2.waterfall_sink_c(
+        	self.GetWin(),
+        	baseband_freq=freq,
+        	dynamic_range=100,
+        	ref_level=0,
+        	ref_scale=2,
+        	sample_rate=samp_rate,
+        	fft_size=512,
+        	fft_rate=15,
+        	average=False,
+        	avg_alpha=None,
+        	title="Waterfall Plot",
+        )
+        self.Add(self.wxgui_waterfallsink2_0.win)
+        def wxgui_waterfallsink2_0_callback(x, y):
+        	self.set_freq(x)
+        
+        self.wxgui_waterfallsink2_0.set_callback(wxgui_waterfallsink2_0_callback)
         self.wxgui_fftsink2_0 = fftsink2.fft_sink_c(
         	self.GetWin(),
         	baseband_freq=freq,
@@ -58,10 +77,10 @@ class gr_lora_receive(grc_wxgui.top_block_gui):
         	ref_scale=2.0,
         	sample_rate=samp_rate,
         	fft_size=1024,
-        	fft_rate=30,
+        	fft_rate=15,
         	average=True,
         	avg_alpha=None,
-        	title="LoRa 868 plot",
+        	title="FFT Plot",
         	peak_hold=True,
         )
         self.Add(self.wxgui_fftsink2_0.win)
@@ -82,15 +101,12 @@ class gr_lora_receive(grc_wxgui.top_block_gui):
         self.osmosdr_source_0.set_antenna("", 0)
         self.osmosdr_source_0.set_bandwidth(0, 0)
           
-        self.lora_message_socket_sink_0 = lora.message_socket_sink("127.0.0.1", 40868, 0)
-        self.lora_lora_receiver_0 = lora.lora_receiver(1e6, 868e6, ([868.1e6]), 7, 1000000, False, 4, True)
 
         ##################################################
         # Connections
         ##################################################
-        self.msg_connect((self.lora_lora_receiver_0, 'frames'), (self.lora_message_socket_sink_0, 'in'))    
-        self.connect((self.osmosdr_source_0, 0), (self.lora_lora_receiver_0, 0))    
         self.connect((self.osmosdr_source_0, 0), (self.wxgui_fftsink2_0, 0))    
+        self.connect((self.osmosdr_source_0, 0), (self.wxgui_waterfallsink2_0, 0))    
 
     def get_samp_rate(self):
         return self.samp_rate
@@ -99,6 +115,7 @@ class gr_lora_receive(grc_wxgui.top_block_gui):
         self.samp_rate = samp_rate
         self.osmosdr_source_0.set_sample_rate(self.samp_rate)
         self.wxgui_fftsink2_0.set_sample_rate(self.samp_rate)
+        self.wxgui_waterfallsink2_0.set_sample_rate(self.samp_rate)
 
     def get_offset(self):
         return self.offset
@@ -106,13 +123,19 @@ class gr_lora_receive(grc_wxgui.top_block_gui):
     def set_offset(self, offset):
         self.offset = offset
 
+    def get_lora_sf(self):
+        return self.lora_sf
+
+    def set_lora_sf(self, lora_sf):
+        self.lora_sf = lora_sf
+
     def get_freq(self):
         return self.freq
 
     def set_freq(self, freq):
         self.freq = freq
-        self.lora_lora_receiver_0.set_center_freq(self.freq)
         self.wxgui_fftsink2_0.set_baseband_freq(self.freq)
+        self.wxgui_waterfallsink2_0.set_baseband_freq(self.freq)
 
     def get_ch_freq(self):
         return self.ch_freq
